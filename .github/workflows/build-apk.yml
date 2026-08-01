@@ -60,11 +60,14 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --build-cache
 
+      - name: 🔄 Rename APK
+        run: mv android/app/build/outputs/apk/release/app-release.apk android/app/build/outputs/apk/release/kabin-1.0.${{ github.run_number }}.apk
+
       - name: 📤 Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kabin.apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          name: kabin-1.0.${{ github.run_number }}.apk
+          path: android/app/build/outputs/apk/release/kabin-1.0.${{ github.run_number }}.apk
 
       - name: 🏷 Create Release & Upload APK
         uses: softprops/action-gh-release@v2
@@ -73,6 +76,6 @@ jobs:
           name: kabin v1.0.${{ github.run_number }}
           body: |
             kabin Android APK
-          files: android/app/build/outputs/apk/release/app-release.apk
+          files: android/app/build/outputs/apk/release/kabin-1.0.${{ github.run_number }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
