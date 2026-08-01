@@ -63,9 +63,14 @@ export default function LoginScreen({ navigation }: any) {
   const handleGoogleLogin = async () => {
     try {
       await googleLogin();
-      Alert.alert('Google Girişi', 'Şu an simülasyon modunda. Gerçek kurulum için OAuth ayarları gerekir.');
+      Alert.alert('Başarılı', 'Google ile başarıyla giriş yapıldı!');
+      if (navigation.canGoBack()) navigation.goBack();
+      else navigation.navigate('Home');
     } catch (error: any) {
-      Alert.alert('Hata', error.message);
+      // Sadece kullanıcı iptal etmediyse hata göster (hata kodu genelde 12501 veya SIGN_IN_CANCELLED olur, ama mesajdan yakalayabiliriz)
+      if (!error.message?.includes('CANCELLED')) {
+        Alert.alert('Google Giriş Hatası', error.message);
+      }
     }
   };
 

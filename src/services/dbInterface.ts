@@ -95,11 +95,33 @@ export class SupabaseRepository implements IAuthRepository {
 
   // Firebase Google Giriş
   async googleLogin(): Promise<UserProfile> {
-    console.log('Google ile giriş yapılıyor (Expo ortamında özel kurulum gerekir)...');
-    // Expo Go'da Google girişi expo-auth-session paketi ile ekstra token gerektirir
-    // Burada Google OAuth Credential'ı alınıp signInWithCredential ile bağlanmalıdır
-    // Şimdilik mock dönüyoruz, UI tarafında Google Client ID eklenmesi gerek.
-    return { id: 'firebase_google_user_1', username: 'google_user', createdAt: new Date() };
+    console.log('Google ile giriş yapılıyor...');
+    const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
+    const { GoogleAuthProvider, signInWithCredential } = await import('firebase/auth');
+    const { auth } = await import('./firebaseConfig');
+
+    // Sadece bir kere configure etmek yeterlidir ama burada her seferinde yapıyoruz (güvenli)
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    });
+
+    // Play servislerini kontrol et (Android için)
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    
+    // Google ile giriş penceresini aç
+    const userInfo = await GoogleSignin.signIn();
+    
+    // idToken kullanarak Firebase Credential oluştur
+    if (!userInfo.data?.idToken) {
+      throw new Error("Google'dan idToken alınamadı.");
+    }
+    const googleCredential = GoogleAuthProvider.credential(userInfo.data.idToken);
+    
+    // Firebase auth'a credential'ı vererek giriş yap
+    const userCredential = await signInWithCredential(auth, googleCredential);
+    const user = userCredential.user;
+
+    return { id: user.uid, username: user.displayName || user.email || 'google_user', createdAt: new Date() };
   }
 }
 
