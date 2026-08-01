@@ -2,8 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
-import { firebaseConfig } from '../services/firebaseConfig';
+
 import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen({ navigation }: any) {
@@ -17,7 +16,6 @@ export default function LoginScreen({ navigation }: any) {
   const [otpCode, setOtpCode] = useState('');
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   
-  const recaptchaVerifier = useRef(null);
   
   const { login, register, verifyEmail, sendPhoneCode, verifyPhoneCode, googleLogin, isLoading } = useAuth();
 
@@ -38,7 +36,7 @@ export default function LoginScreen({ navigation }: any) {
         // Telefon Modu
         if (!phone) return;
         const formattedPhone = phone.startsWith('+') ? phone : `+90${phone}`;
-        const result = await sendPhoneCode(formattedPhone, recaptchaVerifier.current);
+        const result = await sendPhoneCode(formattedPhone);
         setConfirmationResult(result);
         setIsOtpStep(true);
       }
@@ -113,11 +111,7 @@ export default function LoginScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <FirebaseRecaptchaVerifierModal
-        ref={recaptchaVerifier}
-        firebaseConfig={firebaseConfig}
-        attemptInvisibleVerification={true}
-      />
+
       
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center' }}>
         <View style={styles.header}>

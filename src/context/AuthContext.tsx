@@ -11,8 +11,8 @@ type AuthContextData = {
   login: (email: string, passwordHash: string) => Promise<void>;
   register: (email: string, passwordHash: string) => Promise<void>;
   verifyEmail: (email: string, code: string) => Promise<void>;
-  sendPhoneCode: (phoneNumber: string, recaptchaVerifier: any) => Promise<any>;
-  verifyPhoneCode: (verificationId: string, code: string) => Promise<void>;
+  sendPhoneCode: (phoneNumber: string) => Promise<any>;
+  verifyPhoneCode: (confirmationResult: any, code: string) => Promise<void>;
   googleLogin: () => Promise<void>;
   logout: () => void;
   isLoading: boolean;
@@ -82,12 +82,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const sendPhoneCode = async (phoneNumber: string, recaptchaVerifier: any) => {
+  const sendPhoneCode = async (phoneNumber: string) => {
     setIsLoading(true);
     try {
-      return await dbService.sendPhoneCode(phoneNumber, recaptchaVerifier);
+      return await dbService.sendPhoneCode(phoneNumber);
     } catch (error: any) {
-      console.warn('SMS gönderme hatası:', error.message);
+      console.error(error);
       throw error;
     } finally {
       setIsLoading(false);

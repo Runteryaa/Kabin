@@ -14,7 +14,7 @@ export interface IAuthRepository {
   register(email: string, passwordHash: string): Promise<UserProfile>;
   verifyEmail(email: string, code: string): Promise<UserProfile>;
   // Yeni eklenen Firebase Telefon ve Google metodları
-  sendPhoneCode(phoneNumber: string, recaptchaVerifier: any): Promise<any>;
+  sendPhoneCode(phoneNumber: string): Promise<any>;
   verifyPhoneCode(verificationId: string, code: string): Promise<UserProfile>;
   googleLogin(): Promise<UserProfile>;
 }
@@ -35,11 +35,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Firebase ve Supabase Entegrasyonu (Hibrit Mimari)
 export class SupabaseRepository implements IAuthRepository {
   async login(email: string, passwordHash: string): Promise<UserProfile> {
-    console.log('Firebase üzerinden e-posta ile giriş yapılıyor...');
-    const { signInWithEmailAndPassword } = await import('firebase/auth');
-    const { auth } = await import('./firebaseConfig');
+    console.log('Native Firebase üzerinden e-posta ile giriş yapılıyor...');
+    const auth = (await import('@react-native-firebase/auth')).default;
     
-    const userCredential = await signInWithEmailAndPassword(auth, email, passwordHash);
+    const userCredential = await auth().signInWithEmailAndPassword(email, passwordHash);
     const user = userCredential.user;
     
     // Doğrulama kontrolü (Kullanıcı e-posta linkine tıkladı mı?)
@@ -51,39 +50,35 @@ export class SupabaseRepository implements IAuthRepository {
   }
   
   async register(email: string, passwordHash: string): Promise<UserProfile> {
-    console.log('Firebase üzerine e-posta ile kaydediliyor...');
-    const { createUserWithEmailAndPassword, sendEmailVerification } = await import('firebase/auth');
-    const { auth } = await import('./firebaseConfig');
+    console.log('Native Firebase üzerine e-posta ile kaydediliyor...');
+    const auth = (await import('@react-native-firebase/auth')).default;
     
-    const userCredential = await createUserWithEmailAndPassword(auth, email, passwordHash);
+    const userCredential = await auth().createUserWithEmailAndPassword(email, passwordHash);
     const user = userCredential.user;
     
     // Firebase link gönderir (6 haneli kod değil)
-    await sendEmailVerification(user);
+    await user.sendEmailVerification();
     
     return { id: user.uid, username: user.email || 'user', createdAt: new Date() };
   }
 
   async verifyEmail(email: string, code: string): Promise<UserProfile> {
-    // Firebase'de e-posta doğrulaması link ile yapılır, OTP kodu ile yapılmaz.
-    // O yüzden bu fonksiyon Firebase kullanıldığında atlanır veya bilgi döner.
     console.log('Firebase e-posta doğrulaması için linke tıklanması gerekir.');
     throw new Error('E-posta doğrulama linki mail adresinize gönderildi. Lütfen mailinize giderek linke tıklayın.');
   }
 
   // Firebase Telefon Doğrulama
-  async sendPhoneCode(phoneNumber: string, recaptchaVerifier: any): Promise<any> {
-    const { signInWithPhoneNumber } = await import('firebase/auth');
-    const { auth } = await import('./firebaseConfig');
-    console.log(`${phoneNumber} numarasına SMS kodu gönderiliyor (Firebase)...`);
+  async sendPhoneCode(phoneNumber: string): Promise<any> {
+    const auth = (await import('@react-native-firebase/auth')).default;
+    console.log(`${phoneNumber} numarasına SMS kodu gönderiliyor (Native Firebase)...`);
     
-    // recaptchaVerifier Expo üzerinden LoginScreen'de oluşturulacak
-    const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+    // Native kütüphane otomatik recaptcha çözer (veya arkaplanda play integrity kullanır)
+    const confirmationResult = await auth().signInWithPhoneNumber(phoneNumber);
     return confirmationResult;
   }
 
   async verifyPhoneCode(confirmationResult: any, code: string): Promise<UserProfile> {
-    console.log(`Kod ${code} ile telefon doğrulanıyor (Firebase)...`);
+    console.log(`Kod ${code} ile telefon doğrulanıyor (Native Firebase)...`);
     
     const result = await confirmationResult.confirm(code);
     const user = result.user;
@@ -97,28 +92,21 @@ export class SupabaseRepository implements IAuthRepository {
   async googleLogin(): Promise<UserProfile> {
     console.log('Google ile giriş yapılıyor...');
     const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
-    const { GoogleAuthProvider, signInWithCredential } = await import('firebase/auth');
-    const { auth } = await import('./firebaseConfig');
+    const auth = (await import('@react-native-firebase/auth')).default;
 
-    // Sadece bir kere configure etmek yeterlidir ama burada her seferinde yapıyoruz (güvenli)
     GoogleSignin.configure({
       webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     });
 
-    // Play servislerini kontrol et (Android için)
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-    
-    // Google ile giriş penceresini aç
     const userInfo = await GoogleSignin.signIn();
     
-    // idToken kullanarak Firebase Credential oluştur
     if (!userInfo.data?.idToken) {
       throw new Error("Google'dan idToken alınamadı.");
     }
-    const googleCredential = GoogleAuthProvider.credential(userInfo.data.idToken);
+    const googleCredential = auth.GoogleAuthProvider.credential(userInfo.data.idToken);
     
-    // Firebase auth'a credential'ı vererek giriş yap
-    const userCredential = await signInWithCredential(auth, googleCredential);
+    const userCredential = await auth().signInWithCredential(googleCredential);
     const user = userCredential.user;
 
     return { id: user.uid, username: user.displayName || user.email || 'google_user', createdAt: new Date() };
@@ -142,7 +130,7 @@ export class OracleTransactionDBRepository implements IAuthRepository {
     return { id: 'oracle_123', username: email, createdAt: new Date() };
   }
 
-  async sendPhoneCode(phoneNumber: string, recaptchaVerifier: any): Promise<any> {
+  async sendPhoneCode(phoneNumber: string): Promise<any> {
     return "fake_verification_id_12345";
   }
 
