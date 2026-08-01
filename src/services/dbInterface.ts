@@ -2,6 +2,8 @@
 // için hazırlanan örnek altyapı arayüzlerini içerir.
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 export interface UserProfile {
   id: string;
@@ -36,8 +38,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 export class SupabaseRepository implements IAuthRepository {
   async login(email: string, passwordHash: string): Promise<UserProfile> {
     console.log('Native Firebase üzerinden e-posta ile giriş yapılıyor...');
-    const auth = (await import('@react-native-firebase/auth')).default;
-    
     const userCredential = await auth().signInWithEmailAndPassword(email, passwordHash);
     const user = userCredential.user;
     
@@ -51,8 +51,6 @@ export class SupabaseRepository implements IAuthRepository {
   
   async register(email: string, passwordHash: string): Promise<UserProfile> {
     console.log('Native Firebase üzerine e-posta ile kaydediliyor...');
-    const auth = (await import('@react-native-firebase/auth')).default;
-    
     const userCredential = await auth().createUserWithEmailAndPassword(email, passwordHash);
     const user = userCredential.user;
     
@@ -69,7 +67,6 @@ export class SupabaseRepository implements IAuthRepository {
 
   // Firebase Telefon Doğrulama
   async sendPhoneCode(phoneNumber: string): Promise<any> {
-    const auth = (await import('@react-native-firebase/auth')).default;
     console.log(`${phoneNumber} numarasına SMS kodu gönderiliyor (Native Firebase)...`);
     
     // Native kütüphane otomatik recaptcha çözer (veya arkaplanda play integrity kullanır)
@@ -91,8 +88,7 @@ export class SupabaseRepository implements IAuthRepository {
   // Firebase Google Giriş
   async googleLogin(): Promise<UserProfile> {
     console.log('Google ile giriş yapılıyor...');
-    const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
-    const auth = (await import('@react-native-firebase/auth')).default;
+
 
     GoogleSignin.configure({
       webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
