@@ -58,7 +58,7 @@ jobs:
           npx expo prebuild --platform android
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --build-cache
+          ./gradlew assembleRelease -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/kabin.keystore -Pandroid.injected.signing.store.password=android -Pandroid.injected.signing.key.alias=kabin -Pandroid.injected.signing.key.password=android --no-daemon --build-cache
 
       - name: 🔄 Rename APK
         run: mv android/app/build/outputs/apk/release/app-release.apk android/app/build/outputs/apk/release/kabin-1.0.${{ github.run_number }}.apk
