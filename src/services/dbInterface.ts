@@ -2,7 +2,14 @@
 // için hazırlanan örnek altyapı arayüzlerini içerir.
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import auth from '@react-native-firebase/auth';
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  signInWithCredential,
+  signInWithPhoneNumber,
+  GoogleAuthProvider
+} from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 export interface UserProfile {
@@ -38,7 +45,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 export class SupabaseRepository implements IAuthRepository {
   async login(email: string, passwordHash: string): Promise<UserProfile> {
     console.log('Native Firebase üzerinden e-posta ile giriş yapılıyor...');
-    const userCredential = await auth().signInWithEmailAndPassword(email, passwordHash);
+    const authInstance = getAuth();
+    const userCredential = await signInWithEmailAndPassword(authInstance, email, passwordHash);
     const user = userCredential.user;
     
     // Doğrulama kontrolü (Kullanıcı e-posta linkine tıkladı mı?)
@@ -51,7 +59,8 @@ export class SupabaseRepository implements IAuthRepository {
   
   async register(email: string, passwordHash: string): Promise<UserProfile> {
     console.log('Native Firebase üzerine e-posta ile kaydediliyor...');
-    const userCredential = await auth().createUserWithEmailAndPassword(email, passwordHash);
+    const authInstance = getAuth();
+    const userCredential = await createUserWithEmailAndPassword(authInstance, email, passwordHash);
     const user = userCredential.user;
     
     // Firebase link gönderir (6 haneli kod değil)
@@ -69,8 +78,8 @@ export class SupabaseRepository implements IAuthRepository {
   async sendPhoneCode(phoneNumber: string): Promise<any> {
     console.log(`${phoneNumber} numarasına SMS kodu gönderiliyor (Native Firebase)...`);
     
-    // Native kütüphane otomatik recaptcha çözer (veya arkaplanda play integrity kullanır)
-    const confirmationResult = await auth().signInWithPhoneNumber(phoneNumber);
+    const authInstance = getAuth();
+    const confirmationResult = await signInWithPhoneNumber(authInstance, phoneNumber);
     return confirmationResult;
   }
 
@@ -100,9 +109,10 @@ export class SupabaseRepository implements IAuthRepository {
     if (!userInfo.data?.idToken) {
       throw new Error("Google'dan idToken alınamadı.");
     }
-    const googleCredential = auth.GoogleAuthProvider.credential(userInfo.data.idToken);
+    const googleCredential = GoogleAuthProvider.credential(userInfo.data.idToken);
     
-    const userCredential = await auth().signInWithCredential(googleCredential);
+    const authInstance = getAuth();
+    const userCredential = await signInWithCredential(authInstance, googleCredential);
     const user = userCredential.user;
 
     return { id: user.uid, username: user.displayName || user.email || 'google_user', createdAt: new Date() };
