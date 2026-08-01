@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { 
   StyleSheet, 
@@ -8,65 +8,118 @@ import {
   Image, 
   TouchableOpacity,
   Dimensions,
-  Platform
+  Platform,
+  ActivityIndicator,
+  RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../services/dbInterface';
 
 const { width } = Dimensions.get('window');
-const numColumns = Platform.OS === 'web' && width > 768 ? 4 : 2;
-
-const MOCK_DATA = [
-  { id: '1', title: 'Vintage Deri Ceket', price: '450 TL', image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&q=80&w=400' },
-  { id: '2', title: 'Beyaz Sneaker', price: '320 TL', image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=400' },
-  { id: '3', title: 'Siyah Kumaş Pantolon', price: '210 TL', image: 'https://images.unsplash.com/photo-1594938298593-c53f06487e08?auto=format&fit=crop&q=80&w=400' },
-  { id: '4', title: 'Retro Güneş Gözlüğü', price: '150 TL', image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&q=80&w=400' },
-  { id: '5', title: 'Kanvas Çanta', price: '180 TL', image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&q=80&w=400' },
-  { id: '6', title: 'Desenli Gömlek', price: '250 TL', image: 'https://images.unsplash.com/photo-1596755094514-f87e32f85e23?auto=format&fit=crop&q=80&w=400' },
-];
+// Airbnb tarzı mobilde genelde tek satırda büyük görsel (veya yan yana 2)
+const numColumns = Platform.OS === 'web' && width > 768 ? 4 : 1;
 
 export default function HomeScreen() {
+  const [listings, setListings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchListings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('listings')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase fetch hatası:', error.message);
+      } else {
+        setListings(data || []);
+      }
+    } catch (err) {
+      console.error('Veri çekilirken hata:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchListings();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchListings();
+  };
+
   const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.card}>
-      <Image source={{ uri: item.image }} style={styles.cardImage} />
+    <TouchableOpacity style={styles.card} activeOpacity={0.9}>
+      <View style={styles.imageContainer}>
+        <Image 
+          source={{ uri: item.image_url || 'https://images.unsplash.com/photo-1560393464-5c69a73c5770?auto=format&fit=crop&w=800&q=80' }} 
+          style={styles.cardImage} 
+        />
+        <TouchableOpacity style={styles.favoriteButton}>
+          <Ionicons name="heart-outline" size={24} color="#FFF" />
+        </TouchableOpacity>
+      </View>
       <View style={styles.cardBody}>
-        <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-        <Text style={styles.cardPrice}>{item.price}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.cardTitle} numberOfLines={1}>{item.title || 'İlan Başlığı'}</Text>
+          <View style={styles.ratingContainer}>
+            <Ionicons name="star" size={14} color="#1A1A2E" />
+            <Text style={styles.ratingText}>{item.rating || 'Yeni'}</Text>
+          </View>
+        </View>
+        <Text style={styles.cardSubtitle} numberOfLines={1}>{item.location || 'Konum Belirtilmemiş'}</Text>
+        <Text style={styles.cardSubtitle} numberOfLines={1}>{item.category || 'Kategori'}</Text>
+        <Text style={styles.cardPrice}>
+          <Text style={styles.priceBold}>{item.price ? `${item.price} TL` : 'Fiyat Belirtilmemiş'}</Text>
+        </Text>
       </View>
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" backgroundColor="#F5F7FA" />
+      <StatusBar style="dark" backgroundColor="#FFF" />
       
-      {/* Header */}
+      {/* Header (Search Bar style like Airbnb) */}
       <View style={styles.header}>
-        <Text style={styles.logoText}>Kabin</Text>
-        <TouchableOpacity style={styles.headerButton}>
-          <Text style={styles.headerButtonText}>Bildirimler</Text>
+        <TouchableOpacity style={styles.searchBar} activeOpacity={0.8}>
+          <Ionicons name="search" size={20} color="#1A1A2E" style={styles.searchIcon} />
+          <View>
+            <Text style={styles.searchTitle}>Kabin'de Arayın</Text>
+            <Text style={styles.searchSubtitle}>İstediğiniz her şey, komisyonsuz.</Text>
+          </View>
         </TouchableOpacity>
-      </View>
-
-      {/* Banner */}
-      <View style={styles.banner}>
-        <Text style={styles.bannerTitle}>Adil Bir Pazar Yeri</Text>
-        <Text style={styles.bannerText}>
-          Dolap ve Gardrops'taki yüksek kesintilere inat, <Text style={styles.bannerHighlight}>Kabin'de komisyon her zaman sabit %10!</Text> Emeğinin karşılığını sen al.
-        </Text>
       </View>
 
       {/* Product Grid */}
       <View style={styles.listContainer}>
-        <Text style={styles.sectionTitle}>Sana Özel Seçimler</Text>
-        <FlatList
-          data={MOCK_DATA}
-          renderItem={renderItem}
-          keyExtractor={item => item.id}
-          numColumns={numColumns}
-          contentContainerStyle={styles.flatListContent}
-          columnWrapperStyle={styles.columnWrapper}
-          showsVerticalScrollIndicator={false}
-        />
+        {loading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#E94560" />
+          </View>
+        ) : listings.length === 0 ? (
+          <View style={styles.centerContainer}>
+            <Ionicons name="cube-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyText}>Henüz hiç ilan yok.</Text>
+            <Text style={styles.emptySubText}>İlk ilanı sen ekle!</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={listings}
+            renderItem={renderItem}
+            keyExtractor={(item, index) => item.id?.toString() || index.toString()}
+            numColumns={numColumns}
+            contentContainerStyle={styles.flatListContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E94560" />}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -75,105 +128,120 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#FFF',
   },
   header: {
+    paddingHorizontal: 24,
+    paddingTop: 10,
+    paddingBottom: 20,
+    backgroundColor: '#FFF',
+  },
+  searchBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 30,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#1A1A2E',
-  },
-  logoText: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#E94560',
-    letterSpacing: 1,
-  },
-  headerButton: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  headerButtonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  banner: {
-    backgroundColor: '#0F3460',
-    margin: 16,
-    padding: 20,
-    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 10,
     elevation: 5,
   },
-  bannerTitle: {
-    color: '#E94560',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
+  searchIcon: {
+    marginRight: 15,
   },
-  bannerText: {
-    color: '#FFF',
-    fontSize: 15,
-    lineHeight: 22,
+  searchTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1A2E',
   },
-  bannerHighlight: {
-    fontWeight: 'bold',
-    color: '#FFD700',
+  searchSubtitle: {
+    fontSize: 12,
+    color: '#717171',
+    marginTop: 2,
   },
   listContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
   },
-  sectionTitle: {
-    fontSize: 22,
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#1A1A2E',
-    marginBottom: 12,
+    marginTop: 16,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: '#717171',
+    marginTop: 8,
   },
   flatListContent: {
-    paddingBottom: 20,
-  },
-  columnWrapper: {
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    paddingBottom: 40,
   },
   card: {
     flex: 1,
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    marginHorizontal: 8,
+    marginBottom: 32,
+  },
+  imageContainer: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 3,
-    maxWidth: Platform.OS === 'web' && width > 768 ? '23%' : '48%',
+    backgroundColor: '#F5F5F5',
   },
   cardImage: {
     width: '100%',
-    height: 180,
+    height: '100%',
     resizeMode: 'cover',
   },
+  favoriteButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+  },
   cardBody: {
-    padding: 12,
+    marginTop: 12,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   cardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#222',
+    flex: 1,
+    marginRight: 10,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingText: {
     fontSize: 14,
-    color: '#555',
-    marginBottom: 6,
+    color: '#222',
+    marginLeft: 4,
+  },
+  cardSubtitle: {
+    fontSize: 15,
+    color: '#717171',
+    marginBottom: 2,
   },
   cardPrice: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1A1A2E',
+    fontSize: 15,
+    color: '#222',
+    marginTop: 6,
+  },
+  priceBold: {
+    fontWeight: '600',
   },
 });
